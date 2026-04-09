@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="./css/chessboard-1.0.0.css">
+</head>
+
+<body>
+    <div style="margin-bottom: 10px; font-family: sans-serif;">
+        <div>Преимущество: <span id="advantage">0</span></div>
+        <div>Съеденные фигуры: <span id="captured"></span></div>
+    </div>
+    <div id="myBoard" style="width: 400px"></div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+    <script src="js/chessboard-1.0.0.js"></script>
+
+    <script>
+        const game = new Chess();
+        const boardId = 'myBoard';
+
+        // Веса фигур для подсчета очков
+        const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+
+        function onDragStart(source, piece, position, orientation) {
+            // Не даем двигать фигуры, если игра окончена
+            if (game.game_over()) return false;
+
+            // Разрешаем двигать только фигуры того, чей сейчас ход
+            if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+                (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+                return false;
+            }
+        }
+
+        function onDrop(source, target) {
+            // Проверяем, законен ли ход по правилам шахмат
+            const move = game.move({
+                from: source,
+                to: target,
+            });
+
+            // Если ход незаконный (например, пешка ест вперед), возвращаем фигуру назад
+            if (move === null) return 'snapback';
+
+            updateStatus();
+        }
+
+        // Обновляем позицию на доске после завершения анимации хода
+        function onSnapEnd() {
+            board.position(game.fen());
+        }
+
+        function updateStatus() {
+            let score = 0;
+            let capturedHTML = '';
+
+            // Проходим по всей истории ходов, чтобы найти съеденные фигуры
+            game.history({ verbose: true }).forEach(move => {
+                if (move.captured) {
+                    const val = pieceValues[move.captured];
+                    // Если съели черную фигуру — плюс белым, если белую — минус
+                    score += (move.color === 'w' ? val : -val);
+                    capturedHTML += move.captured.toUpperCase() + ' ';
+                }
+            });
+
+            document.getElementById('advantage').innerText = score > 0 ? `+${score} (Белые)` : score < 0 ? `${score} (Черные)` : '0';
+            document.getElementById('captured').innerText = capturedHTML;
+
+            if (game.in_checkmate()) alert('Мат! Игра окончена.');
+        }
+
+        const config = {
+            draggable: true,
+            position: 'start',
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd
+        };
+
+        const board = Chessboard(boardId, config);
+    </script>
+</body>
+
+</html>
